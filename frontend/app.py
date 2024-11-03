@@ -1,8 +1,9 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import openai
 import random
+from datetime import datetime, timedelta
+
+import openai
+import pandas as pd
+import streamlit as st
 
 openai.api_key = ""
 
@@ -269,6 +270,7 @@ def generate_advice(entries):
     context = "Here are some recent journal entries:\n"
     for date, entry in entries:
         context += f"- {date.strftime('%B %d, %Y')}: {entry[0]}\n"
+    print(context)
 
     # Create a prompt for ChatGPT with recent entries as context
     prompt = (
@@ -290,7 +292,6 @@ def generate_advice(entries):
 
 # Fourth page function (styled as a chatbot)
 def fourth_page():
-
     page_bg_color = '''
     <style>
     .stApp {
@@ -304,65 +305,51 @@ def fourth_page():
 
     app_header()
 
-    st.title("Advice 💡")
-    st.subheader("Generate advice based on recent feelings and journal entries")
+    st.title("Chat with Your Journal 🤖")
+    st.subheader("Ask for advice or just chat about your journal entries")
 
-    # Date range selector
-    st.write("Select a date range to generate advice from specific journal entries.")
-    start_date = st.date_input("Start date", datetime.now() - timedelta(days=30))
-    end_date = st.date_input("End date", datetime.now())
+    # Chat history
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
 
-    # Fetch entries within the date range
-    selected_entries = get_entries_in_date_range(start_date, end_date)
+    # Display chat history
+    for chat in st.session_state.chat_history:
+        st.markdown(f"**{chat['role']}:** {chat['content']}")
 
-    # Display entries as context
-    if selected_entries:
-        st.write("Using the following journal entries as context:")
-        for date, entry in selected_entries:
-            display_journal(date, entry[0])
+    # User input
+    user_input = st.text_input("You:")
 
-    button_style = """
-        <style>
-        .centered-button .stButton>button {
-            font-size: 20px;
-            padding: 15px 30px;
-            background-color: #2E8B57; /* Sea Green */
-            color: white;
-            border: none;
-            border-radius: 8px;
-        }
-        </style>
-    """
+    if st.button("Send") and user_input:
+        # Add user input to chat history
+        st.session_state.chat_history.append({"role": "You", "content": user_input})
 
-    # Inject the CSS into Streamlit
-    st.markdown(button_style, unsafe_allow_html=True)
+        # Generate response using OpenAI API using journal entries as context
+        recent_entries = get_entries_in_date_range(datetime.now().date() - timedelta(days=30), datetime.now().date())
+        context = "Here are some recent journal entries:\n"
+        for date, entry in recent_entries:
+            context += f"- {date.strftime('%B %d, %Y')}: {entry[0]}\n"
 
-    # Center the button
-    st.markdown('<div class="centered-button">', unsafe_allow_html=True)
+        prompt = (
+            f"{context}\n\n{user_input}"
+        )
 
-    # Generate advice button
-    if st.button("💬 Generate Advice"):
-        if selected_entries:
-            # Generate advice based on selected entries
-            advice_text = generate_advice(selected_entries)
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful and empathetic assistant that uses the user's journal entries as context."},
+                *[{"role": "user", "content": chat['content']} for chat in st.session_state.chat_history if chat['role'] == "You"],
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
 
-            # Display advice in a chatbot-style bubble
-            st.markdown("""
-                <style>
-                .chatbot-response {
-                    background-color: #e0f7fa;
-                    color: #00695c;
-                    padding: 15px;
-                    border-radius: 10px;
-                    margin: 10px 0;
-                    font-family: Arial, sans-serif;
-                }
-                </style>
-            """, unsafe_allow_html=True)
+        # Extract and add response to chat history
+        bot_response = response['choices'][0]['message']['content']
+        st.session_state.chat_history.append({"role": "Bot", "content": bot_response})
 
-            st.markdown(f"<div class='chatbot-response'>{advice_text}</div>", unsafe_allow_html=True)
-        else:
-            st.warning("No journal entries found in the selected date range.")
+        # Display the updated chat
+        st.experimental_rerun()
+
 
 
 
