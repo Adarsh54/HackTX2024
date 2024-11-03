@@ -48,7 +48,7 @@ def app_header():
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="app-title">PUT TITLE HERE GUYS 📔</div>', unsafe_allow_html=True)
+    st.markdown('<div class="app-title">TheraSense 📔</div>', unsafe_allow_html=True)
 
 
 # Main function
@@ -99,10 +99,12 @@ def main_page():
     selected_date = st.date_input("Pick a date")
 
     # Display event information or option to create a new entry
-    if selected_date in data_dict:
+    if selected_date > datetime.now().date():
+        st.subheader("This date hasn't happened yet!")
+    elif selected_date in data_dict:
         display_journal(selected_date, data_dict[selected_date][0])
     else:
-        st.write("No events scheduled for this date.")
+        st.subheader("No entry for this date.")
         if st.button("Write a journal entry"):
             new_entry = st.text_area("Enter your journal entry for this date:")
             if st.button("Save Entry"):
@@ -367,7 +369,7 @@ def fourth_page():
 
 
 # Sidebar navigation using buttons
-st.sidebar.title("PUT APP NAME HERE")
+st.sidebar.title("TheraSense")
 
 # Check which button is clicked and display the respective page
 
